@@ -39,3 +39,17 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
             # Always close session
             await session.close()
 
+
+async def get_ml_service():
+    """
+    FastAPI dependency: provides ML service (singleton, lazy-loaded).
+    
+    Usage:
+        @app.get("/recommend")
+        async def recommend(ml: MLService = Depends(get_ml_service)):
+            return await ml.get_recommendations(user_id)
+    """
+    from app.services.ml_service import MLService
+    return await MLService.get_instance()
+
+
