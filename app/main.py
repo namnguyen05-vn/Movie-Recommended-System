@@ -88,8 +88,8 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Add middleware
-app.add_middleware(LoggingMiddleware)
+# Add middleware (order matters - last added runs first)
+# IMPORTANT: CORSMiddleware MUST be added first so it processes responses before LoggingMiddleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -97,6 +97,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(LoggingMiddleware)
 
 # Add global exception handlers
 app.add_exception_handler(AppError, app_error_handler)
