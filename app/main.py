@@ -90,6 +90,25 @@ app = FastAPI(
 
 # Add middleware (order matters - last added runs first)
 # IMPORTANT: CORSMiddleware MUST be added first so it processes responses before LoggingMiddleware
+# AND we add a second CORS middleware at the end to catch any responses from Starlette's error handler
+from starlette.middleware.cors import CORSMiddleware as StarleteCORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+
+class CORSErrorMiddleware(BaseHTTPMiddleware):
+    """Middleware to ensure CORS headers on all responses, including error responses"""
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+        
+        # Add CORS headers if not already present
+        if 'access-control-allow-origin' not in response.headers:
+            response.headers['access-control-allow-origin'] = '*'
+            response.headers['access-control-allow-credentials'] = 'true'
+            response.headers['access-control-allow-methods'] = 'GET, POST, PUT, DELETE, OPTIONS, PATCH'
+            response.headers['access-control-allow-headers'] = 'Content-Type, Authorization'
+        
+        return response
+
+app.add_middleware(CORSErrorMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

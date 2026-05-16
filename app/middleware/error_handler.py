@@ -14,6 +14,15 @@ from app.utils.logger import get_logger
 logger = get_logger(__name__)
 
 
+def _add_cors_headers(request: Request, response: JSONResponse):
+    """Add CORS headers to response for error responses"""
+    origin = request.headers.get("origin", "*")
+    response.headers["access-control-allow-origin"] = origin if origin != "*" else "*"
+    response.headers["access-control-allow-credentials"] = "true"
+    response.headers["access-control-allow-methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+    response.headers["access-control-allow-headers"] = "Content-Type, Authorization"
+
+
 async def app_error_handler(request: Request, exc: AppError):
     """
     Handle AppError exceptions.
@@ -36,10 +45,14 @@ async def app_error_handler(request: Request, exc: AppError):
         timestamp=datetime.utcnow()
     )
     
-    return JSONResponse(
+    response = JSONResponse(
         status_code=exc.status_code,
         content=error_response.model_dump()
     )
+    
+    # Add CORS headers to ensure frontend can access error responses
+    _add_cors_headers(request, response)
+    return response
 
 
 async def generic_error_handler(request: Request, exc: Exception):
@@ -65,8 +78,12 @@ async def generic_error_handler(request: Request, exc: Exception):
         timestamp=datetime.utcnow()
     )
     
-    return JSONResponse(
+    response = JSONResponse(
         status_code=500,
         content=error_response.model_dump()
     )
+    
+    # Add CORS headers to ensure frontend can access error responses
+    _add_cors_headers(request, response)
+    return response
 

@@ -4,11 +4,13 @@ import re
 from app.db.database import SessionLocal
 from app.db.models import Movie
 
-# ĐIỀN API KEY CỦA BẠN VÀO ĐÂY
+# API KEY
 TMDB_API_KEY = "38a24d288a2ac72112bf20b02d65e4d0"
-BASE_URL = "https://api.themoviedb.org/3/search/movie"
-IMAGE_URL = "https://image.tmdb.org/t/p/w500"  # w500 là kích thước ảnh (width 500px)
+OMDB_API_KEY = "882ad3e1"
 
+TMDB_BASE_URL = "https://api.themoviedb.org/3/search/movie"
+TMDB_IMAGE_URL = "https://image.tmdb.org/t/p/w500"  # w500 là kích thước ảnh (width 500px)
+OMDB_BASE_URL = "http://www.omdbapi.com/"
 
 def clean_title(raw_title):
     """
@@ -22,71 +24,105 @@ def clean_title(raw_title):
     return raw_title.strip(), None
 
 
-def sync_movies_with_tmdb():
+def sync_movies_with_fallback():
     db = SessionLocal()
 
-    # Chỉ tìm những phim chưa có ảnh Poster (để rớt mạng chạy lại không bị trùng)
-    movies_to_update = db.query(Movie).filter((Movie.description == "") | (Movie.description == None)).limit(100).all()
+    # Chỉ tìm vét lại những bộ phim MÀ TMDB ĐÃ BÓ TAY (bị gán chữ mặc định)
+    movies_to_update = db.query(Movie).filter(
+        (Movie.description == None) |
+        (Movie.description == "") |
+        (Movie.description == "Chưa có mô tả.") |
+        (Movie.description == "Không tìm thấy thông tin trên TMDB.") |
+        (Movie.poster_url == "https://via.placeholder.com/500x750?text=No+Poster")
+    ).limit(1000).all()
 
     if not movies_to_update:
-        print("🎉 Toàn bộ phim đã được cập nhật Poster!")
+        print("🎉 Toàn bộ kho phim đã đầy đủ dữ liệu!")
         return
 
-    print(f"🤖 Bắt đầu cào dữ liệu cho {len(movies_to_update)} bộ phim...")
+    print(f"🤖 Bắt đầu cào quét 2 LỚP cho {len(movies_to_update)} bộ phim lỗi...")
 
     success_count = 0
     for movie in movies_to_update:
         title, year = clean_title(movie.title)
+        data_found = False
 
-        # Cấu hình gói hàng gửi cho TMDB (thêm tham số language=vi-VN để ưu tiên lấy nội dung Tiếng Việt)
-        params = {
-            "api_key": TMDB_API_KEY,
-            "query": title,
-            "language": "vi-VN"
-        }
-        if year:
-            params["primary_release_year"] = year
-
+        # ==========================================
+        # LỚP 1: THỬ TMDB TRƯỚC
+        # ==========================================
         try:
-            response = requests.get(BASE_URL, params=params)
-            data = response.json()
+            tmdb_params = {"api_key": TMDB_API_KEY, "query": title, "language": "vi-VN"}
+            if year: tmdb_params["primary_release_year"] = year
 
-            # Nếu TMDB tìm thấy ít nhất 1 kết quả
-            if data.get("results") and len(data["results"]) > 0:
-                best_match = data["results"][0]  # Lấy kết quả sát nhất
+            tmdb_res = requests.get(TMDB_BASE_URL, params=tmdb_params, timeout=5).json()
 
-                # Cập nhật thông tin vào đối tượng Movie
-                if best_match.get("poster_path"):
-                    movie.poster_url = IMAGE_URL + best_match["poster_path"]
-                desc = best_match.get("overview", "")
+            if tmdb_res.get("results") and len(tmdb_res["results"]) > 0:
+                best_match = tmdb_res["results"][0]
 
-                # NẾU MÔ TẢ TIẾNG VIỆT BỊ TRỐNG -> GỌI LẠI BẰNG TIẾNG ANH
-                if not desc.strip():
-                    params["language"] = "en-US"
-                    en_response = requests.get(BASE_URL, params=params).json()
-                    if en_response.get("results") and len(en_response["results"]) > 0:
-                        desc = en_response["results"][0].get("overview", "Chưa có mô tả.")
-                movie.description = desc
+                # Kiểm tra xem TMDB có thực sự cung cấp đủ ảnh và mô tả không
+                poster_path = best_match.get("poster_path")
+                desc = best_match.get("overview", "").strip()
 
-                print(f"✅ Đã tải: {title} ({year})")
-                success_count += 1
-            else:
-                print(f"❌ Không tìm thấy: {title} trên TMDB")
-                # Đánh dấu bằng ảnh mặc định để lần sau script bỏ qua phim này
-                movie.poster_url = "https://via.placeholder.com/500x750?text=No+Poster"
-                movie.description = "Không tìm thấy thông tin trên TMDB."
+                if not desc:
+                    # Gọi thử tiếng Anh nếu tiếng Việt rỗng
+                    tmdb_params["language"] = "en-US"
+                    en_res = requests.get(TMDB_BASE_URL, params=tmdb_params, timeout=5).json()
+                    if en_res.get("results") and len(en_res["results"]) > 0:
+                        desc = en_res["results"][0].get("overview", "").strip()
 
-            # TMDB cho phép tối đa khoảng 40 request/giây, ta cho robot nghỉ 0.1s cho an toàn
-            time.sleep(0.1)
+                if poster_path and desc:
+                    movie.poster_url = TMDB_IMAGE_URL + poster_path
+                    movie.description = desc
+                    print(f"✅ [TMDB] Đã phục hồi: {title}")
+                    data_found = True
+                    success_count += 1
 
+            time.sleep(0.1)  # Nghỉ giữa các request TMDB
         except Exception as e:
-            print(f"⚠️ Lỗi mạng khi tải phim {title}: {e}")
+            pass  # Bỏ qua lỗi TMDB để nhường sân cho OMDb
 
-    # Lưu toàn bộ dữ liệu xuống MySQL
-    db.commit()
+        # ==========================================
+        # LỚP 2: NẾU TMDB BÓ TAY -> CHUYỂN SANG OMDB
+        # ==========================================
+        if not data_found:
+            try:
+                omdb_params = {"apikey": OMDB_API_KEY, "t": title}
+                if year: omdb_params["y"] = year
+
+                omdb_res = requests.get(OMDB_BASE_URL, params=omdb_params, timeout=5).json()
+
+                if omdb_res.get("Response") == "True":
+                    # Lấy Poster từ OMDb
+                    omdb_poster = omdb_res.get("Poster")
+                    if omdb_poster != "N/A":
+                        movie.poster_url = omdb_poster
+                    else:
+                        movie.poster_url = "https://via.placeholder.com/500x750?text=No+Poster"
+
+                    # Lấy Nội dung từ OMDb
+                    omdb_plot = omdb_res.get("Plot")
+                    if omdb_plot != "N/A":
+                        movie.description = f"[Nguồn OMDb] {omdb_plot}"
+                    else:
+                        movie.description = "Không có mô tả cho bộ phim này."
+
+                    print(f"🌟 [OMDb] Đã cập nhật thành công: {title}")
+                    success_count += 1
+                else:
+                    print(f"❌ [Bó tay] Cả TMDB và OMDb đều không có: {title}")
+                    movie.poster_url = "https://via.placeholder.com/500x750?text=No+Poster"
+                    movie.description = "Không tìm thấy thông tin trên bất kỳ nền tảng nào."
+
+                time.sleep(0.1)  # Nghỉ giữa các request OMDb
+            except Exception as e:
+                print(f"⚠️ Lỗi OMDb với phim {title}")
+
+        # Vừa chạy vừa lưu dữ liệu ngay lập tức
+        db.commit()
+
     db.close()
-    print(f"✅ Hoàn tất đợt cào dữ liệu! Cập nhật thành công {success_count} phim.")
+    print(f"\n🎉 Hoàn tất chiến dịch! Phục hồi thành công {success_count} phim.")
 
 
 if __name__ == "__main__":
-    sync_movies_with_tmdb()
+    sync_movies_with_fallback()

@@ -16,7 +16,7 @@ from tensorflow.keras.callbacks import EarlyStopping
 # PHẦN 2: CHUẨN BỊ VÀ TIỀN XỬ LÝ DỮ LIỆU
 # ==========================================
 print("Đang tải dữ liệu...")
-df = pd.read_csv('ratings.csv')
+df = pd.read_csv('../data/ratings.csv')
 
 user_encoder = LabelEncoder()
 movie_encoder = LabelEncoder()

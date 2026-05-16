@@ -15,8 +15,8 @@ print("⏳ BƯỚC 1: Đang kết nối đến MySQL Workbench...")
 engine = create_engine(f"mysql+pymysql://{USER}:{PASSWORD}@{HOST}:{PORT}/{DATABASE}")
 
 print("⏳ BƯỚC 2: Đang đọc dữ liệu từ file CSV...")
-movies_df = pd.read_csv('data/movies.csv')
-ratings_df = pd.read_csv('data/ratings.csv')
+movies_df = pd.read_csv('../data/movies.csv')
+ratings_df = pd.read_csv('../data/ratings.csv')
 
 print("⏳ BƯỚC 3: Đang đẩy dữ liệu vào MySQL (Có thể mất 10-20 giây cho 100.000 dòng)...")
 # Đẩy bảng Movies
