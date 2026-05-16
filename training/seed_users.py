@@ -1,11 +1,11 @@
-from app.db.database import SessionLocal
+from app.db.database import AsyncSessionLocal
 from app.db.models import User, Rating
 from app.core.security import get_password_hash
 
 
 def seed_old_users():
     print("⏳ Đang quét dữ liệu lịch sử và gieo mầm tài khoản...")
-    db = SessionLocal()
+    db = AsyncSessionLocal()
 
     try:
         # 1. Lấy danh sách tất cả các ID độc nhất từ bảng ratings (những người đã từng chấm điểm phim)

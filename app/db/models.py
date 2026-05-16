@@ -2,6 +2,8 @@ from sqlalchemy import Column, Integer, String, Float, DateTime, Text
 from app.db.database import Base
 from pydantic import BaseModel, Field
 from sqlalchemy.sql import func
+from sqlalchemy import Column, Integer, ForeignKey, DateTime
+from datetime import datetime
 # ==========================================
 # BẢNG 1: TÀI KHOẢN NGƯỜI DÙNG (users)
 # ==========================================
@@ -23,6 +25,12 @@ class Movie(Base):
     genres = Column(String(255))
     description = Column(Text)
     poster_url = Column(String(255))
+    backdrop_url = Column(String(255), nullable=True)
+    runtime = Column(Integer, nullable=True)
+    director = Column(String(255), nullable=True)
+    cast = Column(Text, nullable=True)
+    release_year = Column(Integer, nullable=True)
+    imdb_rating = Column(Float, nullable=True)
 
 # ==========================================
 # BẢNG 3: LỊCH SỬ CHẤM ĐIỂM (ratings)
@@ -36,3 +44,13 @@ class Rating(Base):
     movieId = Column(Integer, primary_key=True, index=True)
     rating = Column(Float)
     timestamp = Column(DateTime, default=func.now(), onupdate=func.now())
+
+# ==========================================
+# BẢNG 4: DANH SÁCH PHIM YÊU THÍCH (favorites)
+# ==========================================
+class Favorite(Base):
+    __tablename__ = "favorites"
+
+    userId = Column(Integer, ForeignKey("users.userId", ondelete="CASCADE"), primary_key=True)
+    movieId = Column(Integer, ForeignKey("movies.movieId", ondelete="CASCADE"), primary_key=True)
+    created_at = Column(DateTime, default=datetime.utcnow)

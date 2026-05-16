@@ -123,11 +123,12 @@ app.add_exception_handler(AppError, app_error_handler)
 app.add_exception_handler(Exception, generic_error_handler)
 
 # Import and include routers
-from app.api import auth, recommend, movies
+from app.api import auth, recommend, movies, favorites
 
 app.include_router(auth.router)
 app.include_router(movies.router)
 app.include_router(recommend.router)
+app.include_router(favorites.router)
 
 
 @app.get("/")

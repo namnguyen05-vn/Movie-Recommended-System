@@ -6,20 +6,44 @@ const itemsPerPage = 12;
 let currentGenre = '';
 let currentSearch = '';
 let isWatchingAI = false;
+let userFavoriteIds = []; // Mảng bí mật lưu các ID phim đã thích
 
+// Hàm gọi API lấy danh sách ID phim yêu thích của user
+async function fetchUserFavorites() {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    try {
+        const response = await fetch(`${API_URL}/favorites/`, {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (response.ok) {
+            const favMovies = await response.json();
+            // Chỉ lấy cái ID của phim cất vào mảng (VD: [1, 5, 23])
+            userFavoriteIds = favMovies.map(m => m.movieId);
+        }
+    } catch (error) { console.error("Lỗi lấy danh sách tim:", error); }
+}
 const movieModal = new bootstrap.Modal(document.getElementById('movieModal'));
 
-document.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('pageshow', async (event) => {
     const token = localStorage.getItem("token");
 
-    // Luôn mở khóa khu vực giao diện
     document.getElementById('movieSection').classList.remove('hidden');
     document.getElementById('genreSection').classList.remove('hidden');
 
     if (token) {
         document.getElementById('logoutBtn').classList.remove('hidden');
         showMainInterface();
-        loadHome();
+
+        // Luôn gọi API cập nhật lại danh sách ID phim yêu thích mới nhất từ MySQL
+        await fetchUserFavorites();
+
+        // Kiểm tra xem trước đó người dùng đang xem danh sách nào để tải lại cho đúng
+        if (isWatchingAI) {
+            loadHome(); // Nạp lại trang chủ cá nhân hóa dữ liệu mới
+        } else {
+            fetchMoviesData(); // Nạp lại danh sách theo Thể loại hoặc Tìm kiếm hiện tại
+        }
     } else {
         document.getElementById('logoutBtn').classList.add('hidden');
         document.getElementById('authSection').classList.remove('hidden');
@@ -61,6 +85,7 @@ document.getElementById('authForm').addEventListener('submit', async (e) => {
             document.getElementById('password').value = '';
             document.getElementById('authAlert').classList.add('hidden');
             showMainInterface();
+            await fetchUserFavorites();
             loadHome();
         } else {
             showAlert("Account created! Please sign in.", "success");
@@ -106,7 +131,17 @@ async function loadMoviesByGenre(genre) {
     fetchMoviesData();
 }
 
-async function loadHome() {
+function loadHome(event) {
+    if (event) event.preventDefault(); // Chặn việc sinh ra dấu # trên thanh địa chỉ
+    loadMoviesByGenre(''); // Tải danh sách mặc định không có bộ lọc
+}
+async function loadRecommendations() {
+    const token = localStorage.getItem("token");
+    if (!token) {
+        alert("Vui lòng đăng nhập để xem phim AI gợi ý!");
+        return;
+    }
+
     isWatchingAI = true;
     document.getElementById('paginationControls').classList.add('hidden');
     document.getElementById('sectionTitle').innerText = "Analyzing your taste...";
@@ -114,13 +149,22 @@ async function loadHome() {
 
     try {
         const response = await fetch(API_URL + "/recommend", {
-            headers: { 'Authorization': 'Bearer ' + localStorage.getItem("token") }
+            headers: { 'Authorization': 'Bearer ' + token }
         });
-        if (response.status === 401) return logout();
+
+        if (response.status === 401) {
+            logout();
+            return;
+        }
+
         const data = await response.json();
-        document.getElementById('sectionTitle').innerText = data.is_new_user ? "Trending Movies" : "Personalized For You";
+        document.getElementById('sectionTitle').innerText = data.is_new_user ? "Trending Movies (AI)" : "Personalized For You";
         renderMovies(data.recommendations, true);
-    } catch (error) { console.error(error); }
+
+    } catch (error) {
+        console.error("Lỗi kết nối:", error);
+        alert("Không thể tải danh sách gợi ý.");
+    }
 }
 
 async function fetchMoviesData() {
@@ -160,7 +204,10 @@ function renderMovies(movies, isAI = false) {
         const cleanTitle = movie.title.replace(/\(\d{4}\)/, '').trim(); // Bỏ năm khỏi tiêu đề
         const primaryGenre = movie.genres.split('|')[0] || 'Movie';
         const desc = movie.description || "Nội dung chi tiết đang được cập nhật...";
-
+        const isFav = userFavoriteIds.includes(movie.movieId);
+        const favBtnHTML = isFav
+            ? `<button class="fav-btn" onclick="toggleFavoriteHome(event, ${movie.movieId}, this)" style="color: #e50914;"><i class="bi bi-heart-fill text-danger me-2"></i>Remove from Favorites</button>`
+            : `<button class="fav-btn" onclick="toggleFavoriteHome(event, ${movie.movieId}, this)"><i class="bi bi-heart me-2"></i>Add to Favorites</button>`;
         // Mô phỏng điểm Rating hiển thị lên góc (Dùng AI rating hoặc tự random nếu là data thô)
         let ratingNum = isAI && movie.predicted_rating ? movie.predicted_rating : (Math.random() * 2 + 7);
 
@@ -175,8 +222,7 @@ function renderMovies(movies, isAI = false) {
                         <div class="movie-title">${cleanTitle}</div>
                         <div class="movie-meta">${year} • ${primaryGenre}</div>
                         <div class="movie-desc">${desc}</div>
-                        <button class="fav-btn" onclick="dummyFav(event)"><i class="bi bi-heart me-2"></i>Add to Favorites</button>
-                    </div>
+                        ${favBtnHTML} </div>
                 </div>
             </div>
         `;
@@ -184,28 +230,58 @@ function renderMovies(movies, isAI = false) {
     });
 }
 
-function dummyFav(e) {
-    e.stopPropagation(); // Ngăn click nhầm vào thẻ mở chi tiết
-    alert("Đã thêm vào mục Yêu thích!");
+async function toggleFavoriteHome(e, movieId, btnElement) {
+    e.stopPropagation(); // Ngăn sự kiện click lan ra ngoài làm mở trang chi tiết phim
+
+    const token = localStorage.getItem("token");
+    if (!token) {
+        alert("Vui lòng đăng nhập để lưu phim yêu thích!");
+        return;
+    }
+
+    // Đổi chữ thành Đang xử lý để người dùng biết đang tải
+    const originalHTML = btnElement.innerHTML;
+    btnElement.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>Wait...`;
+
+    try {
+        const response = await fetch(`${API_URL}/favorites/toggle`, {
+            method: "POST",
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify({ movieId: movieId })
+        });
+
+        if (response.status === 401) {
+            alert("Phiên đăng nhập hết hạn!");
+            logout();
+            return;
+        }
+
+        const data = await response.json();
+        if (data.status === "success") {
+            // Thay đổi màu sắc và chữ của nút ngay lập tức
+            if (data.action === "added") {
+                userFavoriteIds.push(movieId); // THÊM DÒNG NÀY: Lưu ID vào mảng nội bộ
+                btnElement.innerHTML = `<i class="bi bi-heart-fill text-danger me-2"></i>Remove from Favorites`;
+                btnElement.style.color = "#e50914"; // Đổi màu chữ sang đỏ cho nổi bật
+            } else {
+                userFavoriteIds = userFavoriteIds.filter(id => id !== movieId); // THÊM DÒNG NÀY: Xóa ID khỏi mảng nội bộ
+                btnElement.innerHTML = `<i class="bi bi-heart me-2"></i>Add to Favorites`;
+                btnElement.style.color = ""; // Trả về màu mặc định
+            }
+        }
+    } catch (error) {
+        console.error("Lỗi thả tim:", error);
+        btnElement.innerHTML = originalHTML; // Lỗi thì trả về nút cũ
+        alert("Không thể kết nối đến máy chủ.");
+    }
 }
 
 // ============ MODAL DETAILS ============
 async function openMovieDetails(movieId) {
-    currentMovieId = movieId;
-    document.getElementById('rateMessage').innerText = "";
-    renderStars();
-    try {
-        const response = await fetch(`${API_URL}/movies/${movieId}`);
-        const movie = await response.json();
-        const cleanTitle = movie.title.replace(/\(\d{4}\)/, '').trim();
-
-        document.getElementById('modalTitle').innerText = cleanTitle;
-        document.getElementById('modalPoster').src = movie.poster_url || "https://via.placeholder.com/500x750?text=No+Poster";
-        document.getElementById('modalGenres').innerText = movie.genres.replace(/\|/g, ' • ');
-        document.getElementById('modalDesc').innerText = movie.description || "Chưa có mô tả chi tiết.";
-
-        movieModal.show();
-    } catch (error) { console.error(error); }
+    window.location.href = `movie-detail.html?id=${movieId}`;
 }
 
 function renderStars() {

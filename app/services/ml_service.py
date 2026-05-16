@@ -177,7 +177,8 @@ class MLService:
         if self.ratings_df is None or self.movies_df is None:
             # Fallback: Return all movies with default rating
             self.trending_list = self.movies_df[[
-                'movieId', 'title', 'genres', 'poster_url', 'description'
+                'movieId', 'title', 'genres', 'poster_url', 'description',
+                'backdrop_url', 'runtime', 'director', 'cast', 'release_year', 'imdb_rating'  # THÊM DÒNG NÀY
             ]].head(10).fillna("").to_dict(orient='records')
             # Add default predicted_rating
             for movie in self.trending_list:
@@ -204,9 +205,10 @@ class MLService:
                 self.movies_df, 
                 on='movieId'
             )
-            
+
             self.trending_list = popular_details[[
-                'movieId', 'title', 'genres', 'rating_mean', 'poster_url', 'description'
+                'movieId', 'title', 'genres', 'rating_mean', 'poster_url', 'description',
+                'backdrop_url', 'runtime', 'director', 'cast', 'release_year', 'imdb_rating'  # THÊM DÒNG NÀY
             ]].fillna("").rename(
                 columns={'rating_mean': 'predicted_rating'}
             ).to_dict(orient='records')
@@ -379,11 +381,12 @@ class MLService:
             self.movies_df,
             on='movieId'
         )
-        
+
         return {
             "is_new_user": False,
             "recommendations": top_5[[
-                'movieId', 'title', 'genres', 'predicted_rating', 'poster_url', 'description'
+                'movieId', 'title', 'genres', 'predicted_rating', 'poster_url', 'description',
+                'backdrop_url', 'runtime', 'director', 'cast', 'release_year', 'imdb_rating'  # THÊM DÒNG NÀY
             ]].fillna("").to_dict(orient='records'),
             "history": watched_ids
         }

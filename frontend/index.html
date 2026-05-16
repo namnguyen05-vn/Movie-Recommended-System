@@ -13,7 +13,7 @@
     <!-- Navbar phong cách NEXUS -->
     <nav class="navbar navbar-expand-lg custom-navbar fixed-top">
         <div class="container-fluid px-4">
-            <a class="navbar-brand d-flex align-items-center" href="#" onclick="loadHome()">
+            <a class="navbar-brand d-flex align-items-center" href="#" onclick="loadHome(event)">
                 <span class="nexus-logo">NEXUS</span>
                 <span class="text-light fs-6 ms-2">Movies</span>
             </a>
@@ -34,10 +34,10 @@
                 <!-- Menu Phải -->
                 <ul class="navbar-nav ms-auto align-items-center flex-row justify-content-center gap-4 py-2">
                     <li class="nav-item">
-                        <a class="nav-link nav-btn-active" href="#" onclick="loadHome()"><i class="bi bi-house-door-fill me-1"></i> Home</a>
+                        <a class="nav-link nav-btn-active" href="#" onclick="loadHome(event)"><i class="bi bi-house-door-fill me-1"></i> Home</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link text-white nav-hover" href="#"><i class="bi bi-heart me-1"></i> Favorites</a>
+                        <a class="nav-link text-white nav-hover" href="favorites.html"><i class="bi bi-heart me-1"></i> Favorites</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link text-white nav-hover" href="#"><i class="bi bi-info-circle me-1"></i> About</a>
@@ -63,10 +63,12 @@
             <div id="authAlert" class="alert alert-danger hidden"></div>
             <form id="authForm">
                 <div class="mb-3">
-                    <input type="text" class="form-control auth-input" id="username" placeholder="Username" required>
+                    <input type="text" class="form-control auth-input" id="username" placeholder="Username" required
+                           readonly onfocus="this.removeAttribute('readonly');">
                 </div>
                 <div class="mb-3">
-                    <input type="password" class="form-control auth-input" id="password" placeholder="Password" required>
+                    <input type="password" class="form-control auth-input" id="password" placeholder="Password" required
+                           readonly onfocus="this.removeAttribute('readonly');">
                 </div>
                 <button type="submit" class="btn btn-danger w-100 fw-bold" id="authBtn">Enter</button>
             </form>
@@ -79,6 +81,12 @@
         <div id="genreSection" class="mb-5 hidden">
             <h3 class="section-title text-white mb-3 fw-bold">Browse by Genre</h3>
             <div class="genre-buttons d-flex gap-3 overflow-auto pb-2">
+                <button class="genre-btn" onclick="loadRecommendations()" style="border-color: #ffc107; color: #ffc107;">
+                    <i class="bi bi-magic me-1"></i> For You
+                </button>
+                <button class="genre-btn" onclick="loadMoviesByGenre('')" style="border-color: #0dcaf0; color: #0dcaf0;">
+                    <i class="bi bi-fire me-1"></i> Trending
+                </button>
                 <button class="genre-btn" onclick="loadMoviesByGenre('Action')">Action</button>
                 <button class="genre-btn" onclick="loadMoviesByGenre('Comedy')">Comedy</button>
                 <button class="genre-btn" onclick="loadMoviesByGenre('Drama')">Drama</button>

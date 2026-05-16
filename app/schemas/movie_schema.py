@@ -10,6 +10,12 @@ class MovieResponse(BaseModel):
     genres: str
     description: Optional[str] = None
     poster_url: Optional[str] = None
-
+    backdrop_url: Optional[str] = None
+    runtime: Optional[int] = None
+    director: Optional[str] = None
+    cast: Optional[str] = None
+    release_year: Optional[int] = None
+    imdb_rating: Optional[float] = None
+    predicted_rating: Optional[float] = None
     class Config:
         from_attributes = True

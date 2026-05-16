@@ -1,4 +1,5 @@
 import urllib.parse
+import secrets
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
@@ -7,8 +8,7 @@ class Settings(BaseSettings):
     DB_HOST: str
     DB_PORT: str
     DB_NAME: str
-    SECRET_KEY: str
-    
+    SECRET_KEY: str = secrets.token_urlsafe(32)
     # Feature flags
     DEBUG: bool = False
     LOG_LEVEL: str = "INFO"

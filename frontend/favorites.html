@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Favorites - NEXUS Movies</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <nav class="navbar navbar-expand-lg custom-navbar fixed-top">
+        <div class="container-fluid px-4">
+            <a class="navbar-brand d-flex align-items-center" href="index.html">
+                <span class="nexus-logo">NEXUS</span>
+                <span class="text-light fs-6 ms-2">Movies</span>
+            </a>
+
+            <div class="collapse navbar-collapse" id="navbarContent">
+                <ul class="navbar-nav ms-auto align-items-center flex-row justify-content-center gap-4 py-2">
+                    <li class="nav-item"><a class="nav-link text-white nav-hover" href="index.html"><i class="bi bi-house-door me-1"></i> Home</a></li>
+                    <li class="nav-item"><a class="nav-link text-danger fw-bold" href="favorites.html"><i class="bi bi-heart-fill me-1"></i> Favorites</a></li>
+                    <li class="nav-item"><a class="nav-link text-white nav-hover" href="#"><i class="bi bi-info-circle me-1"></i> About</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container" style="margin-top: 100px; margin-bottom: 50px;">
+        <h2 class="text-white fw-bold mb-4 border-start border-danger border-4 ps-3">My Favorite Movies</h2>
+
+        <div id="emptyMessage" class="text-center py-5 d-none">
+            <i class="bi bi-heartbreak text-secondary" style="font-size: 4rem;"></i>
+            <h4 class="text-secondary mt-3">You haven't added any movies yet.</h4>
+            <a href="index.html" class="btn btn-danger mt-3">Explore Movies</a>
+        </div>
+
+        <div class="row" id="favoritesGrid">
+            <div class="col-12 text-center text-white" id="loadingFav">
+                <div class="spinner-border text-danger" style="width: 3rem; height: 3rem;"></div>
+                <div class="mt-2 text-secondary">Loading your favorites...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = "http://127.0.0.1:8000/api";
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            const token = localStorage.getItem("token");
+            const grid = document.getElementById('favoritesGrid');
+            const emptyMsg = document.getElementById('emptyMessage');
+            const loading = document.getElementById('loadingFav');
+
+            if (!token) {
+                loading.classList.add('d-none');
+                emptyMsg.classList.remove('d-none');
+                emptyMsg.innerHTML = `
+                    <i class="bi bi-shield-lock text-secondary" style="font-size: 4rem;"></i>
+                    <h4 class="text-secondary mt-3">Please sign in to view your favorites.</h4>
+                    <a href="index.html" class="btn btn-danger mt-3">Go to Login</a>
+                `;
+                return;
+            }
+
+            try {
+                // Gọi API lấy thẳng danh sách phim từ MySQL
+                const response = await fetch(`${API_URL}/favorites/`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+
+                loading.classList.add('d-none');
+
+                if (response.status === 401) {
+                    grid.innerHTML = `<div class="col-12 text-center text-danger fs-5">Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại!</div>`;
+                    return;
+                }
+
+                const movies = await response.json();
+
+                if (movies.length === 0) {
+                    emptyMsg.classList.remove('d-none');
+                    return;
+                }
+
+                let htmlContent = "";
+                movies.forEach(movie => {
+                    const poster = movie.poster_url || "https://via.placeholder.com/500x750?text=No+Poster";
+                    const rating = movie.imdb_rating ? movie.imdb_rating.toFixed(1) : "0.0";
+                    const year = movie.release_year || "N/A";
+
+                    // Thêm id cho thẻ div bọc ngoài để JS dễ dàng tìm và xóa nó
+                    htmlContent += `
+                        <div class="col-6 col-sm-4 col-md-3 col-lg-2 mb-4" id="fav-card-${movie.movieId}">
+                            <div class="movie-card" style="cursor: pointer; transition: transform 0.2s;"
+                                 onclick="window.location.href='movie-detail.html?id=${movie.movieId}'">
+                                <div class="position-relative">
+                                    <img src="${poster}" class="img-fluid rounded shadow" style="width: 100%; aspect-ratio: 2/3; object-fit: cover;" alt="${movie.title}">
+
+                                    <div class="position-absolute top-0 end-0 bg-dark text-warning px-2 py-1 m-2 rounded" style="font-size: 0.8rem; opacity: 0.9;">
+                                        <i class="bi bi-star-fill"></i> ${rating}
+                                    </div>
+
+                                    <button class="btn btn-dark border-danger position-absolute"
+                                            style="bottom: 10px; right: 10px; border-radius: 50%; width: 36px; height: 36px; padding: 0; opacity: 0.9;"
+                                            onclick="removeFavorite(event, ${movie.movieId}, this)" title="Remove from Favorites">
+                                        <i class="bi bi-heartbreak-fill text-danger"></i>
+                                    </button>
+
+                                </div>
+                                <h6 class="text-white mt-2 mb-0 text-truncate" title="${movie.title}">${movie.title}</h6>
+                                <small class="text-secondary">${year}</small>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                grid.innerHTML = htmlContent;
+
+            } catch (error) {
+                console.error("Lỗi tải phim yêu thích:", error);
+                loading.classList.add('d-none');
+                grid.innerHTML = `<div class="col-12 text-center text-danger fs-5">Không thể kết nối đến máy chủ. Vui lòng thử lại sau!</div>`;
+            }
+        });
+
+        // ==========================================
+        // HÀM XÓA PHIM YÊU THÍCH NGAY TẠI TRANG
+        // ==========================================
+        async function removeFavorite(event, movieId, btnElement) {
+            // Chặn sự kiện click truyền ra ngoài (để không bị lỡ nhảy sang trang chi tiết)
+            event.stopPropagation();
+
+            const token = localStorage.getItem("token");
+            if (!token) return;
+
+            // Đổi nút thành vòng xoay loading
+            const originalHTML = btnElement.innerHTML;
+            btnElement.innerHTML = `<span class="spinner-border spinner-border-sm text-danger"></span>`;
+
+            try {
+                // Gọi API Toggle để xóa khỏi DB
+                const response = await fetch(`${API_URL}/favorites/toggle`, {
+                    method: "POST",
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({ movieId: movieId })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+
+                    if (data.status === "success" && data.action === "removed") {
+                        // Tìm cái thẻ bọc ngoài cùng của phim này và xóa nó đi
+                        const cardToRemove = document.getElementById(`fav-card-${movieId}`);
+                        if (cardToRemove) {
+                            cardToRemove.remove(); // Bốc hơi khỏi màn hình
+                        }
+
+                        // Kiểm tra xem danh sách phim có bị trống không
+                        const grid = document.getElementById('favoritesGrid');
+                        if (grid.children.length === 0) {
+                            // Nếu xóa hết phim rồi thì hiện lại dòng chữ "You haven't added any movies..."
+                            document.getElementById('emptyMessage').classList.remove('d-none');
+                        }
+                    }
+                } else {
+                    btnElement.innerHTML = originalHTML; // Lỗi thì hiện lại icon cũ
+                    alert("Không thể xóa phim này!");
+                }
+            } catch (error) {
+                console.error("Lỗi khi xóa phim:", error);
+                btnElement.innerHTML = originalHTML;
+            }
+        }
+    </script>
+</body>
+</html>

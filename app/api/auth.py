@@ -12,6 +12,7 @@ from app.schemas.user_schema import UserCreate, UserResponse, Token
 from app.core.security import create_access_token
 from app.core.exceptions import DuplicateUserError, InvalidCredentialsError
 from app.utils.logger import get_logger
+from fastapi import HTTPException
 
 logger = get_logger(__name__)
 
@@ -24,33 +25,24 @@ router = APIRouter(prefix="/api/auth", tags=["Authentication"])
     status_code=status.HTTP_201_CREATED
 )
 async def register(
-    user: UserCreate,
-    db: AsyncSession = Depends(get_db_session)
+        user: UserCreate,
+        db: AsyncSession = Depends(get_db_session)
 ):
-    """
-    Register new user.
-    
-    POST /api/auth/register
-    {
-        "username": "john_doe",
-        "password": "secure_password"
-    }
-    
-    Response: 201 Created
-    {
-        "userId": 1,
-        "username": "john_doe"
-    }
-    """
     logger.info(f"Register endpoint called for: {user.username}")
-    
-    result = await UserService.register_user(
-        user.username,
-        user.password,
-        db
-    )
-    
-    return result
+
+    try:
+        result = await UserService.register_user(
+            user.username,
+            user.password,
+            db
+        )
+        return result
+    except DuplicateUserError as e:
+        logger.warning(f"Đăng ký thất bại - Trùng tên: {user.username}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        logger.error(f"Lỗi 500 thực sự: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Lỗi hệ thống")
 
 
 @router.post("/login", response_model=Token)
