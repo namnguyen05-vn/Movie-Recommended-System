@@ -225,3 +225,24 @@ body {
             display: inline-block;
             vertical-align: middle;
         }
+        /* Star Rating System */
+.star-rating {
+    display: flex;
+    flex-direction: row-reverse; /* Đảo ngược để xử lý hover CSS dễ hơn */
+    justify-content: flex-end;
+    font-size: 2.5rem;
+}
+.star-rating input { display: none; }
+.star-rating label {
+    color: #444;
+    cursor: pointer;
+    transition: color 0.2s ease-in-out;
+    padding: 0 5px;
+}
+/* Khi hover hoặc được check, ngôi sao và các sao đứng trước nó sẽ sáng lên */
+.star-rating label:hover,
+.star-rating label:hover ~ label,
+.star-rating input:checked ~ label {
+    color: #f5c518;
+    text-shadow: 0 0 10px rgba(245, 197, 24, 0.5);
+}

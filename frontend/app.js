@@ -35,6 +35,7 @@ window.addEventListener('pageshow', async (event) => {
         document.getElementById('logoutBtn').classList.remove('hidden');
         showMainInterface();
 
+        checkTokenExpiry();
         // Luôn gọi API cập nhật lại danh sách ID phim yêu thích mới nhất từ MySQL
         await fetchUserFavorites();
 
@@ -85,6 +86,7 @@ document.getElementById('authForm').addEventListener('submit', async (e) => {
             document.getElementById('password').value = '';
             document.getElementById('authAlert').classList.add('hidden');
             showMainInterface();
+            checkTokenExpiry();
             await fetchUserFavorites();
             loadHome();
         } else {
@@ -308,4 +310,50 @@ async function submitRating(ratingValue) {
         if (response.ok) msgDiv.innerHTML = "<span class='text-success'>✅ Cảm ơn đánh giá của bạn!</span>";
         else msgDiv.innerHTML = "<span class='text-danger'>❌ Lỗi khi đánh giá.</span>";
     } catch (error) { msgDiv.innerHTML = "<span class='text-danger'>❌ Mất kết nối mạng.</span>"; }
+}
+// ==========================================
+// HỆ THỐNG TỰ ĐỘNG ĐĂNG XUẤT KHI HẾT HẠN TOKEN
+// ==========================================
+let autoLogoutTimer; // Biến lưu trữ đồng hồ báo thức
+
+function checkTokenExpiry() {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    try {
+        // JWT có 3 phần cách nhau bởi dấu chấm. Phần số 2 (Payload) chứa thời gian.
+        const payloadBase64 = token.split('.')[1];
+        // Giải mã Base64 sang JSON
+        const decodedJson = atob(payloadBase64);
+        const payload = JSON.parse(decodedJson);
+
+        // payload.exp là thời gian hết hạn tính bằng giây. Nhân 1000 để ra mili-giây.
+        const expTime = payload.exp * 1000;
+        const currentTime = Date.now();
+        const timeLeft = expTime - currentTime;
+
+        // Xóa đồng hồ cũ nếu có để tránh chạy đè nhiều vòng lặp
+        if (autoLogoutTimer) clearTimeout(autoLogoutTimer);
+
+        if (timeLeft <= 0) {
+            // Nếu thời gian đã âm -> Hết hạn ngay lúc này -> Đăng xuất luôn
+            forceAutoLogout();
+        } else {
+            // Nếu vẫn còn thời gian -> Cài báo thức. Sau đúng [timeLeft] mili-giây sẽ chạy hàm forceAutoLogout
+            autoLogoutTimer = setTimeout(() => {
+                forceAutoLogout();
+            }, timeLeft);
+            console.log(`⏱️ Đã cài báo thức đăng xuất tự động sau ${Math.round(timeLeft/1000/60)} phút nữa.`);
+        }
+    } catch (error) {
+        console.error("Lỗi đọc Token, buộc đăng xuất:", error);
+        forceAutoLogout();
+    }
+}
+
+function forceAutoLogout() {
+    alert("⏳ Phiên đăng nhập của bạn đã hết hạn. Vui lòng đăng nhập lại để tiếp tục!");
+    localStorage.removeItem("token");
+    localStorage.removeItem("username");
+    window.location.href = "index.html"; // Đá văng về trang chủ
 }

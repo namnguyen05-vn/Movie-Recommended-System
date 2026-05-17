@@ -160,4 +160,73 @@ function renderMovieDetails(movie) {
             alert("Không thể kết nối đến máy chủ.");
         }
     });
+    const starInputs = document.querySelectorAll('#userRatingStars input');
+    const ratingStatus = document.getElementById('ratingStatus');
+    const userToken = localStorage.getItem("token");
+
+    // Lệnh 1: Gọi xuống MySQL lấy số sao cũ ngay khi vừa load trang chi tiết phim
+    async function loadSavedRating() {
+        if (!userToken) {
+            ratingStatus.innerText = "Log in to rate this movie.";
+            return;
+        }
+        try {
+            const response = await fetch(`${API_URL}/rate/${movie.movieId}`, {
+                headers: { 'Authorization': 'Bearer ' + userToken }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                if (data.rated) {
+                    // Tìm đúng ô radio của số sao đó (VD: star5, star4...) và tích chọn
+                    const savedStarInput = document.getElementById(`star${Math.round(data.rating)}`);
+                    if (savedStarInput) {
+                        savedStarInput.checked = true;
+                        ratingStatus.innerHTML = `<span class="text-warning">★ You already rated this ${data.rating} stars</span>`;
+                    }
+                }
+            }
+        } catch (err) {
+            console.error("Lỗi lấy điểm đánh giá cũ:", err);
+        }
+    }
+
+    // Chạy lệnh tải sao cũ ngay lập tức
+    loadSavedRating();
+
+    // Lệnh 2: Lắng nghe sự kiện người dùng bấm chọn số sao mới để lưu lên DB
+    starInputs.forEach(input => {
+        input.addEventListener('change', async (e) => {
+            if (!userToken) {
+                alert("Vui lòng đăng nhập để đánh giá phim!");
+                e.target.checked = false; // Hủy tích chọn nếu chưa đăng nhập
+                return;
+            }
+
+            const ratingValue = e.target.value;
+            ratingStatus.innerHTML = `<span class="spinner-border spinner-border-sm text-warning"></span> Saving your rating...`;
+
+            try {
+                const response = await fetch(`${API_URL}/rate`, {
+                    method: "POST",
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + userToken
+                    },
+                    body: JSON.stringify({
+                        movieId: movie.movieId,
+                        rating: parseFloat(ratingValue)
+                    })
+                });
+
+                if (response.ok) {
+                    ratingStatus.innerHTML = `<span class="text-success font-weight-bold">✅ You rated this ${ratingValue} stars!</span>`;
+                } else {
+                    ratingStatus.innerText = "❌ Failed to save rating.";
+                }
+            } catch (err) {
+                console.error("Lỗi gửi đánh giá:", err);
+                ratingStatus.innerText = "❌ Connection error.";
+            }
+        });
+    });
 }

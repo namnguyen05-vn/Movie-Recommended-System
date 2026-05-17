@@ -2,7 +2,7 @@ from sqlalchemy import Column, Integer, String, Float, DateTime, Text
 from app.db.database import Base
 from pydantic import BaseModel, Field
 from sqlalchemy.sql import func
-from sqlalchemy import Column, Integer, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, ForeignKey, DateTime, BigInteger
 from datetime import datetime
 # ==========================================
 # BẢNG 1: TÀI KHOẢN NGƯỜI DÙNG (users)
@@ -43,8 +43,7 @@ class Rating(Base):
     userId = Column(Integer, primary_key=True, index=True)
     movieId = Column(Integer, primary_key=True, index=True)
     rating = Column(Float)
-    timestamp = Column(DateTime, default=func.now(), onupdate=func.now())
-
+    timestamp = Column(BigInteger, default=lambda: int(datetime.now().strftime("%Y%m%d%H%M%S")))
 # ==========================================
 # BẢNG 4: DANH SÁCH PHIM YÊU THÍCH (favorites)
 # ==========================================

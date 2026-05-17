@@ -10,6 +10,10 @@ from app.db.dependencies import get_db_session
 from app.services.movie_service import MovieService
 from app.schemas.movie_schema import MovieResponse
 from app.utils.logger import get_logger
+from app.core.security import get_current_user_id
+import time
+from sqlalchemy import select
+from app.db.models import Rating
 
 logger = get_logger(__name__)
 
@@ -86,4 +90,3 @@ async def get_movie(
     movie = await MovieService.get_movie_by_id(movie_id, db)
     
     return movie
-
