@@ -10,13 +10,26 @@ from sklearn.preprocessing import LabelEncoder
 # Bổ sung thêm Dropout và EarlyStopping
 from tensorflow.keras.layers import Input, Embedding, Flatten, Concatenate, Dense, Dropout
 from tensorflow.keras.models import Model
+import pickle
 from tensorflow.keras.callbacks import EarlyStopping
 
 # ==========================================
 # PHẦN 2: CHUẨN BỊ VÀ TIỀN XỬ LÝ DỮ LIỆU
 # ==========================================
-print("Đang tải dữ liệu...")
-df = pd.read_csv('../data/ratings.csv')
+print("Đang kết nối MySQL để lấy dữ liệu mới nhất...")
+
+from sqlalchemy import create_engine
+
+# 1. Tạo cầu nối đến MySQL (Hãy thay đổi user, password và tên database cho khớp với máy bạn)
+# Cú pháp: mysql+pymysql://<user>:<password>@<host>/<database_name>
+db_url = "mysql+pymysql://root:123456@localhost/nexus_movies"
+engine = create_engine(db_url)
+
+# 2. Rút trích (Extract) dữ liệu thẳng từ bảng ratings bằng câu lệnh SQL
+query = "SELECT userId, movieId, rating FROM ratings"
+df = pd.read_sql(query, con=engine)
+
+print(f"Đã lấy thành công {len(df)} lượt đánh giá từ Database!")
 
 user_encoder = LabelEncoder()
 movie_encoder = LabelEncoder()
@@ -107,3 +120,11 @@ print(f"==========================================")
 # Lưu mô hình lại để dùng cho giao diện Web
 model.save('movie_recommender_model.keras')
 print("Đã lưu mô hình thành công vào file 'movie_recommender_model.keras'")
+
+with open('user_encoder.pkl', 'wb') as f:
+    pickle.dump(user_encoder, f)
+
+with open('movie_encoder.pkl', 'wb') as f:
+    pickle.dump(movie_encoder, f)
+
+print("Đã lưu bộ giải mã thành công vào 'user_encoder.pkl' và 'movie_encoder.pkl'")

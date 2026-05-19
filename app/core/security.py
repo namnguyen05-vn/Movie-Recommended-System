@@ -1,26 +1,27 @@
 import jwt
 import bcrypt
-from datetime import timezone
-from datetime import datetime, timedelta
-from app.core.config import settings
+from datetime import timezone, datetime, timedelta
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from fastapi import Depends, HTTPException
+from fastapi import HTTPException, status, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+
+from app.core.config import settings
+from app.db.dependencies import get_db_session
+from app.db.models import User
 
 security = HTTPBearer()
+
+
 # ==========================================
 # 1. BẢO MẬT MẬT KHẨU (DÙNG BCRYPT CHÍNH CHỦ)
 # ==========================================
 
 def get_password_hash(password: str) -> str:
     """Băm mật khẩu: Chuyển string sang byte -> hash -> trả về string để lưu DB"""
-    # Chuyển password sang dạng bytes (UTF-8)
     password_bytes = password.encode('utf-8')
-
-    # Tạo muối (salt) và băm
     salt = bcrypt.gensalt()
     hashed = bcrypt.hashpw(password_bytes, salt)
-
-    # Trả về dạng string để SQLAlchemy lưu vào MySQL dễ dàng
     return hashed.decode('utf-8')
 
 
@@ -49,27 +50,54 @@ def create_access_token(data: dict) -> str:
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
+
 def decode_access_token(token: str):
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
-        return payload.get("sub") # Trả về userId đã lưu trong Token
+        return payload.get("sub")
     except:
         return None
 
 
 def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(security)) -> int:
-    token = credentials.credentials  # FastAPI đã tự động cắt chữ Bearer đi giúp ta
+    token = credentials.credentials
     try:
-        # Giải mã Token bằng chìa khóa bí mật
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
         user_id = payload.get("sub")
 
         if user_id is None:
             raise HTTPException(status_code=401, detail="Token không chứa ID người dùng")
 
-        return int(user_id)  # Trả về số nguyên để nhét vào AI
+        return int(user_id)
 
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token đã hết hạn! Vui lòng đăng nhập lại.")
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Token bị sai hoặc làm giả!")
+
+
+# ==========================================
+# 3. PHÂN QUYỀN (ROLE-BASED ACCESS CONTROL)
+# ==========================================
+
+# Hàm lính gác: Lấy ID từ Token -> Tìm User trong DB -> Kiểm tra Role
+async def get_current_admin(
+        user_id: int = Depends(get_current_user_id),
+        db: AsyncSession = Depends(get_db_session)
+):
+    """
+    Hàm này dùng để bảo vệ các API dành riêng cho Admin.
+    Nó lấy ID từ Token, truy vấn DB để kiểm tra chính xác quyền hiện tại.
+    """
+    stmt = select(User).where(User.userId == user_id)
+    result = await db.execute(stmt)
+    user = result.scalars().first()
+
+    # Nếu không tồn tại user hoặc user không phải admin
+    if not user or user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Quyền truy cập bị từ chối. Bạn không phải là Quản trị viên!"
+        )
+
+    return user

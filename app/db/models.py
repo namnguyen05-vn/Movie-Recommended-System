@@ -13,6 +13,7 @@ class User(Base):
     userId = Column(Integer, primary_key=True, index=True)
     username = Column(String(50), unique=True, index=True)
     password_hash = Column(String(255))
+    role = Column(String(20), default="user")
 
 # ==========================================
 # BẢNG 2: THÔNG TIN PHIM (movies)

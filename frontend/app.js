@@ -81,6 +81,7 @@ document.getElementById('authForm').addEventListener('submit', async (e) => {
         if (isLoginMode) {
             localStorage.setItem("token", data.access_token);
             localStorage.setItem("username", username);
+            localStorage.setItem("role", data.role);
             // Clear form fields
             document.getElementById('username').value = '';
             document.getElementById('password').value = '';
@@ -109,6 +110,17 @@ function showMainInterface() {
     document.getElementById('authSection').classList.add('hidden');
     document.getElementById('welcomeText').innerText = `(${localStorage.getItem("username")})`;
     document.getElementById('logoutBtn').classList.remove('hidden');
+    if (localStorage.getItem("role") === "admin") {
+        const navbarUl = document.querySelector('#navbarContent ul');
+        // Tránh bị add đè nhiều lần nếu bấm F5 liên tục
+        if (!document.getElementById('adminNavBtn')) {
+            const adminLi = document.createElement('li');
+            adminLi.className = 'nav-item';
+            adminLi.id = 'adminNavBtn';
+            adminLi.innerHTML = `<a class="nav-link text-warning fw-bold ms-3 border border-warning rounded px-3" href="admin.html"><i class="bi bi-speedometer2 me-1"></i> Admin Panel</a>`;
+            navbarUl.appendChild(adminLi);
+        }
+    }
 }
 function showAlert(msg, type="danger") {
     const alert = document.getElementById('authAlert');
