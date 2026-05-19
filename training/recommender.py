@@ -3,24 +3,23 @@
 # ==========================================
 import pandas as pd
 import numpy as np
+import urllib.parse
 import matplotlib.pyplot as plt
 import tensorflow as tf
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
-# Bổ sung thêm Dropout và EarlyStopping
 from tensorflow.keras.layers import Input, Embedding, Flatten, Concatenate, Dense, Dropout
 from tensorflow.keras.models import Model
 import pickle
 from tensorflow.keras.callbacks import EarlyStopping
+import os
+from dotenv import load_dotenv
+from sqlalchemy import create_engine
 
 # ==========================================
 # PHẦN 2: CHUẨN BỊ VÀ TIỀN XỬ LÝ DỮ LIỆU
 # ==========================================
 print("Đang kết nối MySQL để lấy dữ liệu mới nhất...")
-
-import os
-from dotenv import load_dotenv
-from sqlalchemy import create_engine
 
 # 1. Tải các biến môi trường từ file .env
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -31,11 +30,12 @@ load_dotenv(dotenv_path=dotenv_path)
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 DB_HOST = os.getenv("DB_HOST")
-DB_PORT = os.getenv("DB_PORT") # Mặc định là 3306 nếu không tìm thấy trong .env
+DB_PORT = os.getenv("DB_PORT")
 DB_NAME = os.getenv("DB_NAME")
 
 # 3. Tạo cầu nối động đến MySQL
-db_url = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+encoded_password = urllib.parse.quote_plus(DB_PASSWORD) if DB_PASSWORD else ""
+db_url = f"mysql+pymysql://{DB_USER}:{encoded_password}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 engine = create_engine(db_url)
 
 # 4. Rút trích dữ liệu bằng câu lệnh SQL
@@ -100,8 +100,7 @@ model.compile(optimizer='adam', loss='mean_squared_error')
 # ==========================================
 print("\nBắt đầu quá trình huấn luyện AI (Training)...")
 
-# Cài đặt Early Stopping: Theo dõi 'val_loss', dừng nếu không cải thiện sau 2 vòng (patience=2)
-# Khôi phục trọng số tốt nhất (restore_best_weights=True)
+# Cài đặt Early Stopping
 early_stop = EarlyStopping(
     monitor='val_loss',
     patience=2,
@@ -114,7 +113,7 @@ history = model.fit(
     x=[X_train_user, X_train_movie],
     y=y_train,
     batch_size=128,
-    epochs=15, # Có thể tự tin tăng lên 15 vòng vì đã có Early Stopping lo việc dừng sớm
+    epochs=15,
     validation_data=([X_test_user, X_test_movie], y_test),
     callbacks=[early_stop],
     verbose=1
@@ -129,15 +128,28 @@ print(f"\n==========================================")
 print(f"🎯 KẾT QUẢ SAU KHI NÂNG CẤP: RMSE = {rmse:.4f}")
 print(f"==========================================")
 
+# ==========================================
+# PHẦN 5: LƯU MÔ HÌNH VÀ BỘ GIẢI MÃ BẰNG ĐƯỜNG DẪN TUYỆT ĐỐI
+# ==========================================
+print("\nĐang lưu trữ dữ liệu AI...")
 
-# Lưu mô hình lại để dùng cho giao diện Web
-model.save('movie_recommender_model.keras')
-print("Đã lưu mô hình thành công vào file 'movie_recommender_model.keras'")
+# Xác định lại đường dẫn tuyệt đối của thư mục chứa script này (thư mục training)
+CURRENT_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
-with open('user_encoder.pkl', 'wb') as f:
+# Tạo đường dẫn lưu file an toàn
+model_path = os.path.join(CURRENT_SCRIPT_DIR, 'movie_recommender_model.keras')
+user_enc_path = os.path.join(CURRENT_SCRIPT_DIR, 'user_encoder.pkl')
+movie_enc_path = os.path.join(CURRENT_SCRIPT_DIR, 'movie_encoder.pkl')
+
+# Lưu Model
+model.save(model_path)
+print(f"✅ Đã lưu cấu trúc AI vào: {model_path}")
+
+# Lưu Encoders
+with open(user_enc_path, 'wb') as f:
     pickle.dump(user_encoder, f)
 
-with open('movie_encoder.pkl', 'wb') as f:
+with open(movie_enc_path, 'wb') as f:
     pickle.dump(movie_encoder, f)
 
-print("Đã lưu bộ giải mã thành công vào 'user_encoder.pkl' và 'movie_encoder.pkl'")
+print(f"✅ Đã lưu bộ giải mã thành công vào:\n - {user_enc_path}\n - {movie_enc_path}")

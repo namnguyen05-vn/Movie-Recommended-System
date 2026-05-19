@@ -1,4 +1,8 @@
-from fastapi import APIRouter, Depends
+import subprocess
+import sys
+import os
+from datetime import datetime
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from sqlalchemy import desc
@@ -7,6 +11,7 @@ from app.db.models import Favorite
 from app.db.dependencies import get_db_session
 from app.core.security import get_current_admin
 from app.db.models import User, Movie, Rating
+from app.services.ml_service import MLService
 
 # Tạo Router mới với tiền tố /api/admin
 router = APIRouter(prefix="/api/admin", tags=["Admin Dashboard"])
@@ -78,19 +83,47 @@ async def trigger_ai_retrain(
         admin_user=Depends(get_current_admin),
 ):
     """
-    Hàm này mô phỏng việc gọi script Machine Learning để train lại ma trận gợi ý.
-    Trong thực tế, bạn sẽ import model AI vào đây và gọi hàm .fit()
+    Kích hoạt chạy file training/recommender.py để huấn luyện lại AI
+    Sau đó tự động gọi MLService nạp lại mô hình vào RAM.
     """
-    import asyncio
-    from datetime import datetime
+    try:
+        # Xác định vị trí file
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        script_path = os.path.normpath(os.path.join(current_dir, "../../training/recommender.py"))
 
-    # Giả lập thời gian AI đang tính toán (đọc file, train ma trận...) mất 3 giây
-    await asyncio.sleep(3)
+        if not os.path.exists(script_path):
+            raise HTTPException(status_code=404, detail=f"Không tìm thấy file: {script_path}")
 
-    current_time = datetime.now().strftime("%d/%m/%Y %H:%M")
+        # Bóp cò: Khởi chạy file thuật toán
+        process = subprocess.run(
+            [sys.executable, "-X", "utf8", script_path]
+        )
 
-    return {
-        "status": "success",
-        "message": "AI Model đã được huấn luyện lại thành công với dữ liệu mới nhất!",
-        "last_update": current_time
-    }
+        # Kiểm tra kết quả
+        if process.returncode == 0:
+
+            # ==========================================
+            # 2. CÚ CHỐT QUAN TRỌNG NHẤT: BẢO MLSERVICE TẢI LẠI RAM
+            # ==========================================
+            print("\n🔄 Đang ra lệnh cho MLService tải lại mô hình mới từ ổ cứng...")
+
+            # Lấy instance duy nhất của MLService đang chạy
+            ml_instance = await MLService.get_instance()
+
+            # Gọi hàm tải lại (đã bọc Lock cực kỳ an toàn của bạn)
+            await ml_instance.reload_model()
+
+            print("✅ Cập nhật bộ nhớ RAM hoàn tất!")
+            # ==========================================
+
+            current_time = datetime.now().strftime("%d/%m/%Y %H:%M")
+            return {
+                "status": "success",
+                "message": "AI Model đã được huấn luyện và nạp lên hệ thống thành công!",
+                "last_update": current_time
+            }
+        else:
+            raise HTTPException(status_code=500, detail="Thuật toán AI gặp sự cố. Vui lòng check Terminal!")
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
