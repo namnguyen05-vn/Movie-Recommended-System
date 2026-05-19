@@ -18,18 +18,31 @@ from tensorflow.keras.callbacks import EarlyStopping
 # ==========================================
 print("Đang kết nối MySQL để lấy dữ liệu mới nhất...")
 
+import os
+from dotenv import load_dotenv
 from sqlalchemy import create_engine
 
-# 1. Tạo cầu nối đến MySQL (Hãy thay đổi user, password và tên database cho khớp với máy bạn)
-# Cú pháp: mysql+pymysql://<user>:<password>@<host>/<database_name>
-db_url = "mysql+pymysql://root:123456@localhost/nexus_movies"
+# 1. Tải các biến môi trường từ file .env
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+dotenv_path = os.path.join(BASE_DIR, "../.env")
+load_dotenv(dotenv_path=dotenv_path)
+
+# 2. Lấy thông tin cấu hình từ file .env thông qua os.getenv
+DB_USER = os.getenv("DB_USER")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_HOST = os.getenv("DB_HOST")
+DB_PORT = os.getenv("DB_PORT") # Mặc định là 3306 nếu không tìm thấy trong .env
+DB_NAME = os.getenv("DB_NAME")
+
+# 3. Tạo cầu nối động đến MySQL
+db_url = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 engine = create_engine(db_url)
 
-# 2. Rút trích (Extract) dữ liệu thẳng từ bảng ratings bằng câu lệnh SQL
+# 4. Rút trích dữ liệu bằng câu lệnh SQL
 query = "SELECT userId, movieId, rating FROM ratings"
 df = pd.read_sql(query, con=engine)
 
-print(f"Đã lấy thành công {len(df)} lượt đánh giá từ Database!")
+print(f"Đã lấy thành công {len(df)} lượt đánh giá từ Database thông qua cấu hình .env!")
 
 user_encoder = LabelEncoder()
 movie_encoder = LabelEncoder()
