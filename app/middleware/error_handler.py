@@ -47,7 +47,7 @@ async def app_error_handler(request: Request, exc: AppError):
     
     response = JSONResponse(
         status_code=exc.status_code,
-        content=error_response.model_dump()
+        content=error_response.model_dump(mode='json')
     )
     
     # Add CORS headers to ensure frontend can access error responses
@@ -80,7 +80,7 @@ async def generic_error_handler(request: Request, exc: Exception):
     
     response = JSONResponse(
         status_code=500,
-        content=error_response.model_dump()
+        content=error_response.model_dump(mode='json')
     )
     
     # Add CORS headers to ensure frontend can access error responses

@@ -31,6 +31,25 @@
         .stat-icon { width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; }
         .stat-info h3 { font-size: 2rem; font-weight: 700; margin: 0; }
         .stat-info p { color: #aaa; margin: 0; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; }
+
+        #userSearchInput {
+            color: #ffffff !important; /* Màu trắng tinh cho chữ khi bạn gõ */
+        }
+        #userSearchInput::placeholder {
+            color: rgba(255, 255, 255, 0.6) !important; /* Màu trắng hơi trong suốt cho chữ hướng dẫn */
+        }
+        #userSearchInput:focus {
+            box-shadow: none !important; /* Bỏ viền xanh mặc định của trình duyệt khi click vào */
+        }
+        #movieSearchInput {
+            color: #ffffff !important; /* Màu trắng tinh cho chữ khi bạn gõ */
+        }
+        #movieSearchInput::placeholder {
+            color: rgba(255, 255, 255, 0.6) !important; /* Màu trắng hơi trong suốt cho chữ hướng dẫn */
+        }
+        #movieSearchInput:focus {
+            box-shadow: none !important; /* Bỏ viền xanh mặc định của trình duyệt khi click vào */
+        }
     </style>
 </head>
 <body>
@@ -38,166 +57,265 @@
     <div class="sidebar">
         <div class="sidebar-brand"><span>NEXUS</span> Admin</div>
         <div class="nav flex-column">
-            <a href="#" class="nav-link active"><i class="bi bi-grid-1x2-fill"></i> Dashboard</a>
-            <a href="#" class="nav-link"><i class="bi bi-film"></i> Quản lý Phim</a>
-            <a href="#" class="nav-link"><i class="bi bi-people-fill"></i> Quản lý Users</a>
+            <a href="#" id="menu-dashboard" class="nav-link active"><i class="bi bi-grid-1x2-fill"></i> Dashboard</a>
+            <a href="#" id="menu-movies" class="nav-link"><i class="bi bi-film"></i> Quản lý Phim</a>
+            <a href="#" id="menu-users" class="nav-link"><i class="bi bi-people-fill"></i> Quản lý Users</a>
             <a href="index.html" class="nav-link mt-5 text-warning"><i class="bi bi-box-arrow-left"></i> Về Trang chủ</a>
         </div>
     </div>
 
     <div class="main-content">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2 class="fw-bold">Tổng quan Hệ thống</h2>
 
-            <button id="retrainAIBtn" class="btn btn-warning fw-bold shadow">
-                <i class="bi bi-cpu-fill me-2"></i>Cập nhật Model AI
-            </button>
+        <div id="dashboard-section">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="fw-bold">Tổng quan Hệ thống</h2>
+                <button id="retrainAIBtn" class="btn btn-warning fw-bold shadow">
+                    <i class="bi bi-cpu-fill me-2"></i>Cập nhật Model AI
+                </button>
+            </div>
+
+            <div class="row g-4 mb-5">
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <p>Tổng số Phim</p>
+                            <h3 id="totalMovies">--</h3>
+                        </div>
+                        <div class="stat-icon bg-primary text-white"><i class="bi bi-film"></i></div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <p>Thành viên</p>
+                            <h3 id="totalUsers">--</h3>
+                        </div>
+                        <div class="stat-icon bg-success text-white"><i class="bi bi-people"></i></div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <p>Lượt Đánh giá</p>
+                            <h3 id="totalRatings">--</h3>
+                        </div>
+                        <div class="stat-icon bg-warning text-dark"><i class="bi bi-star-fill"></i></div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <p>AI Last Update</p>
+                            <h3 id="aiLastUpdate" class="fs-5 mt-2">Đang tải...</h3>
+                        </div>
+                        <div class="stat-icon bg-danger text-white"><i class="bi bi-clock-history"></i></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <div class="stat-card d-block" style="height: 400px;">
+                        <h5 class="fw-bold mb-4 border-bottom border-secondary pb-2">Top Phim Yêu Thích</h5>
+                        <div class="text-center text-secondary mt-5 pt-5">
+                            <div class="spinner-border mb-3"></div>
+                            <p>Đang tải dữ liệu xếp hạng...</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="stat-card d-block" style="height: 400px;">
+                        <h5 class="fw-bold mb-4 border-bottom border-secondary pb-2">Top Phim Đánh Giá Cao</h5>
+                        <div class="text-center text-secondary mt-5 pt-5">
+                            <div class="spinner-border mb-3"></div>
+                            <p>Đang tải dữ liệu đánh giá...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div class="row g-4 mb-5">
-            <div class="col-md-3">
-                <div class="stat-card">
-                    <div class="stat-info">
-                        <p>Tổng số Phim</p>
-                        <h3 id="totalMovies">--</h3>
+        <div id="users-section" class="d-none">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="fw-bold">Quản lý Thành viên</h2>
+                <button class="btn btn-success fw-bold shadow" onclick="prepareAddModal()">
+                    <i class="bi bi-person-plus-fill me-2"></i>Thêm User
+                </button>
+            </div>
+
+            <div class="row mb-4">
+                <div class="col-md-8 col-lg-6">
+                    <div class="input-group shadow border border-secondary rounded-pill overflow-hidden" style="background-color: #1a1a1a;">
+                        <span class="input-group-text bg-transparent border-0 text-secondary ps-4 pe-2">
+                            <i class="bi bi-search fs-5"></i>
+                        </span>
+                        <input type="text" id="userSearchInput" class="form-control bg-transparent text-light border-0 shadow-none py-3" placeholder="Gõ ID hoặc Tên đăng nhập để tìm ngay...">
                     </div>
-                    <div class="stat-icon bg-primary text-white"><i class="bi bi-film"></i></div>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="stat-card">
-                    <div class="stat-info">
-                        <p>Thành viên</p>
-                        <h3 id="totalUsers">--</h3>
+
+            <div class="stat-card d-block mb-4">
+                <table class="table table-dark table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Tên đăng nhập</th>
+                            <th>Quyền hạn</th>
+                            <th class="text-end">Hành động</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTableBody">
+                        </tbody>
+                </table>
+            </div>
+
+            <nav class="d-flex justify-content-center">
+                <ul class="pagination pagination-dark" id="usersPagination">
+                    </ul>
+            </nav>
+        </div>
+        <div id="movies-section" class="d-none">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="fw-bold">Quản lý Phim</h2>
+                <button class="btn btn-success fw-bold shadow" onclick="prepareAddMovieModal()">
+                    <i class="bi bi-film me-2"></i>Thêm Phim Mới
+                </button>
+            </div>
+
+            <div class="row mb-4">
+                <div class="col-md-8 col-lg-6">
+                    <div class="input-group shadow border border-secondary rounded-pill overflow-hidden" style="background-color: #1a1a1a;">
+                        <span class="input-group-text bg-transparent border-0 text-secondary ps-4 pe-2">
+                            <i class="bi bi-search fs-5"></i>
+                        </span>
+                        <input type="text" id="movieSearchInput" class="form-control bg-transparent text-light border-0 shadow-none py-3" placeholder="Gõ ID hoặc Tên phim để tìm ngay...">
                     </div>
-                    <div class="stat-icon bg-success text-white"><i class="bi bi-people"></i></div>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="stat-card">
-                    <div class="stat-info">
-                        <p>Lượt Đánh giá</p>
-                        <h3 id="totalRatings">--</h3>
-                    </div>
-                    <div class="stat-icon bg-warning text-dark"><i class="bi bi-star-fill"></i></div>
-                </div>
+
+            <div class="stat-card d-block mb-4">
+                <table class="table table-dark table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th style="width: 10%">ID</th>
+                            <th style="width: 45%">Tên Phim</th>
+                            <th style="width: 25%">Thể loại</th>
+                            <th class="text-end" style="width: 20%">Hành động</th>
+                        </tr>
+                    </thead>
+                    <tbody id="moviesTableBody"></tbody>
+                </table>
             </div>
-            <div class="col-md-3">
-                <div class="stat-card">
-                    <div class="stat-info">
-                        <p>AI Last Update</p>
-                        <h3 id="aiLastUpdate" class="fs-5 mt-2">Đang tải...</h3>
-                    </div>
-                    <div class="stat-icon bg-danger text-white"><i class="bi bi-clock-history"></i></div>
-                </div>
-            </div>
+
+            <nav class="d-flex justify-content-center">
+                <ul class="pagination pagination-dark" id="moviesPagination"></ul>
+            </nav>
         </div>
 
-        <div class="row g-4">
-            <div class="col-md-6">
-                <div class="stat-card d-block" style="height: 400px;">
-                    <h5 class="fw-bold mb-4 border-bottom border-secondary pb-2">Top Phim Yêu Thích</h5>
-                    <div class="text-center text-secondary mt-5 pt-5">
-                        <div class="spinner-border mb-3"></div>
-                        <p>Đang tải dữ liệu xếp hạng...</p>
+        <div class="modal fade" id="movieModal" tabindex="-1" data-bs-theme="dark">
+            <div class="modal-dialog modal-lg modal-dialog-scrollable"> <div class="modal-content bg-dark text-light">
+                    <div class="modal-header border-secondary">
+                        <h5 class="modal-title fw-bold" id="movieModalTitle">Thêm Phim Mới</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                     </div>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="stat-card d-block" style="height: 400px;">
-                    <h5 class="fw-bold mb-4 border-bottom border-secondary pb-2">Top Phim Đánh Giá Cao</h5>
-                    <div class="text-center text-secondary mt-5 pt-5">
-                        <div class="spinner-border mb-3"></div>
-                        <p>Đang tải dữ liệu đánh giá...</p>
+                    <div class="modal-body">
+                        <form id="movieForm">
+                            <input type="hidden" id="editMovieId">
+
+                            <div class="row g-3">
+                                <div class="col-md-8">
+                                    <label class="form-label text-secondary">Tên Phim *</label>
+                                    <input type="text" class="form-control bg-dark text-light border-secondary" id="movieTitle" required>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label text-secondary">Năm SX</label>
+                                    <input type="number" class="form-control bg-dark text-light border-secondary" id="movieReleaseYear">
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label text-secondary">Thể loại * (cách bằng dấu phẩy)</label>
+                                    <input type="text" class="form-control bg-dark text-light border-secondary" id="movieGenres" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label text-secondary">Thời lượng (phút)</label>
+                                    <input type="number" class="form-control bg-dark text-light border-secondary" id="movieRuntime">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label text-secondary">Điểm IMDB</label>
+                                    <input type="number" step="0.1" max="10" class="form-control bg-dark text-light border-secondary" id="movieImdb">
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label text-secondary">Đạo diễn</label>
+                                    <input type="text" class="form-control bg-dark text-light border-secondary" id="movieDirector">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-secondary">Diễn viên</label>
+                                    <input type="text" class="form-control bg-dark text-light border-secondary" id="movieCast">
+                                </div>
+
+                                <div class="col-12">
+                                    <label class="form-label text-secondary">Link Poster URL</label>
+                                    <input type="text" class="form-control bg-dark text-light border-secondary" id="moviePoster">
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label text-secondary">Link Backdrop URL</label>
+                                    <input type="text" class="form-control bg-dark text-light border-secondary" id="movieBackdrop">
+                                </div>
+
+                                <div class="col-12">
+                                    <label class="form-label text-secondary">Mô tả nội dung</label>
+                                    <textarea class="form-control bg-dark text-light border-secondary" id="movieDescription" rows="4"></textarea>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer border-secondary">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                        <button type="button" class="btn btn-success fw-bold" id="saveMovieBtn">Lưu Phim</button>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+    <div class="modal fade" id="userModal" tabindex="-1" data-bs-theme="dark">
+        <div class="modal-dialog">
+            <div class="modal-content bg-dark text-light">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title fw-bold" id="userModalTitle">Thêm User Mới</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="userForm">
+                        <input type="hidden" id="editUserId">
+                        <div class="mb-3">
+                            <label class="form-label text-secondary">Tên đăng nhập</label>
+                            <input type="text" class="form-control bg-dark text-light border-secondary" id="userName" required>
+                        </div>
 
-    <script>
-        const API_URL = "http://127.0.0.1:8000/api";
+                        <div class="mb-3" id="passwordGroup">
+                            <label class="form-label text-secondary">Mật khẩu</label>
+                            <input type="password" class="form-control bg-dark text-light border-secondary" id="userPassword">
+                            <small class="text-muted" id="passwordHint">Để trống nếu không muốn đổi (khi sửa)</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label text-secondary">Quyền hạn</label>
+                            <select class="form-select bg-dark text-light border-secondary" id="userRole">
+                                <option value="user">User</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="button" class="btn btn-success fw-bold" id="saveUserBtn">Lưu lại</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
-        document.addEventListener('DOMContentLoaded', () => {
-            const role = localStorage.getItem('role');
-            const token = localStorage.getItem('token');
-            if (!token || role !== 'admin') { /*... code chặn ...*/ return; }
-
-            // Tải toàn bộ dữ liệu khi vào trang
-            loadDashboardStats(token);
-            loadTopFavorites(token);
-            loadTopRated(token);
-        });
-
-        // HÀM 1: Tải Top Phim Yêu Thích
-        async function loadTopFavorites(token) {
-            const container = document.querySelector('.col-md-6:nth-child(1) .text-center');
-            try {
-                const response = await fetch(`${API_URL}/admin/top-favorites`, { headers: { 'Authorization': 'Bearer ' + token }});
-                if (response.ok) {
-                    const data = await response.json();
-                    let html = '<table class="table table-dark table-hover text-start mt-3"><tbody>';
-                    data.forEach((item, index) => {
-                        html += `<tr><td style="width: 10%"><span class="badge bg-danger">${index + 1}</span></td>
-                                 <td>${item.title}</td>
-                                 <td class="text-end text-danger"><i class="bi bi-heart-fill me-1"></i>${item.count}</td></tr>`;
-                    });
-                    html += '</tbody></table>';
-                    container.innerHTML = html;
-                }
-            } catch (error) { container.innerHTML = '<span class="text-danger">Lỗi tải dữ liệu</span>'; }
-        }
-
-        // HÀM 2: Tải Top Phim Đánh Giá Cao
-        async function loadTopRated(token) {
-            const container = document.querySelector('.col-md-6:nth-child(2) .text-center');
-            try {
-                const response = await fetch(`${API_URL}/admin/top-rated`, { headers: { 'Authorization': 'Bearer ' + token }});
-                if (response.ok) {
-                    const data = await response.json();
-                    let html = '<table class="table table-dark table-hover text-start mt-3"><tbody>';
-                    data.forEach((item, index) => {
-                        html += `<tr><td style="width: 10%"><span class="badge bg-warning text-dark">${index + 1}</span></td>
-                                 <td>${item.title}</td>
-                                 <td class="text-end text-warning"><i class="bi bi-star-fill me-1"></i>${item.rating}</td></tr>`;
-                    });
-                    html += '</tbody></table>';
-                    container.innerHTML = html;
-                }
-            } catch (error) { container.innerHTML = '<span class="text-danger">Lỗi tải dữ liệu</span>'; }
-        }
-
-        // HÀM 3: Lắng nghe sự kiện Bấm nút Cập nhật AI
-        document.getElementById('retrainAIBtn').addEventListener('click', async function() {
-            const token = localStorage.getItem('token');
-            const btn = this;
-
-            // Đổi giao diện nút thành Loading
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Đang phân tích dữ liệu...';
-            btn.disabled = true;
-
-            try {
-                const response = await fetch(`${API_URL}/admin/retrain-ai`, {
-                    method: 'POST',
-                    headers: { 'Authorization': 'Bearer ' + token }
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    alert(data.message); // Báo thành công
-                    document.getElementById('aiLastUpdate').innerText = data.last_update; // Cập nhật giờ trên ô chỉ số
-                } else {
-                    alert("Có lỗi xảy ra khi huấn luyện AI.");
-                }
-            } catch (error) {
-                alert("Lỗi kết nối máy chủ!");
-            } finally {
-                // Trả lại nút như cũ
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            }
-        });
-    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="admin.js"></script>
 </body>
 </html>

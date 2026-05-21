@@ -2,7 +2,7 @@ from sqlalchemy import Column, Integer, String, Float, DateTime, Text
 from app.db.database import Base
 from pydantic import BaseModel, Field
 from sqlalchemy.sql import func
-from sqlalchemy import Column, Integer, ForeignKey, DateTime, BigInteger
+from sqlalchemy import Column, Integer, ForeignKey, DateTime, BigInteger, Boolean
 from datetime import datetime
 # ==========================================
 # BẢNG 1: TÀI KHOẢN NGƯỜI DÙNG (users)
@@ -14,7 +14,7 @@ class User(Base):
     username = Column(String(50), unique=True, index=True)
     password_hash = Column(String(255))
     role = Column(String(20), default="user")
-
+    is_active = Column(Boolean, default=True)
 # ==========================================
 # BẢNG 2: THÔNG TIN PHIM (movies)
 # ==========================================
@@ -32,6 +32,7 @@ class Movie(Base):
     cast = Column(Text, nullable=True)
     release_year = Column(Integer, nullable=True)
     imdb_rating = Column(Float, nullable=True)
+    is_active = Column(Boolean, default=True)
 
 # ==========================================
 # BẢNG 3: LỊCH SỬ CHẤM ĐIỂM (ratings)

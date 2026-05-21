@@ -108,6 +108,9 @@ class MLService:
 
             # 2. Load keras model (blocking I/O - run in thread pool)
             logger.info("🧠 Loading Keras model from disk...")
+            import tensorflow as tf
+            logger.info("🧹 Clearing Keras global session cache...")
+            tf.keras.backend.clear_session()
             loop = asyncio.get_event_loop()
             self.model = await loop.run_in_executor(
                 None,
@@ -130,7 +133,7 @@ class MLService:
             self._prepare_trending_movies()
             logger.info("  ✓ Trending list ready")
 
-            MLService._is_initialized = True
+            self._is_initialized = True
             logger.info("✅ ML Service fully initialized!")
 
         except FileNotFoundError as e:
@@ -239,6 +242,9 @@ class MLService:
         """
         Get movie recommendations for user (async wrapper).
         """
+        # Ép kiểu an toàn ở mức cao nhất
+        user_id = int(user_id)
+
         # 1. Fallback nếu thiếu Trending
         if not self.trending_list or len(self.trending_list) == 0:
             logger.debug(f"Trending list empty, loading from database for user {user_id}")
@@ -275,10 +281,17 @@ class MLService:
         except Exception as e:
             logger.warning(f"Could not reload ratings data: {e}")
 
-        # 4. Kiểm tra lịch sử đánh giá (History)
+        # =========================================================
+        # 4. KIỂM TRA LỊCH SỬ (ÉP KIỂU TUYỆT ĐỐI VÀ QUÉT X-QUANG)
+        # =========================================================
         has_history = False
         if self.ratings_df is not None and len(self.ratings_df) > 0:
-            user_ratings = self.ratings_df[self.ratings_df['userId'] == user_id]
+            # Ép cả 2 vế về dạng String để so sánh, vĩnh viễn chặn đứng lỗi kiểu dữ liệu
+            user_id_str = str(user_id)
+            self.ratings_df['userId_str'] = self.ratings_df['userId'].astype(str)
+
+            # Lọc tìm user
+            user_ratings = self.ratings_df[self.ratings_df['userId_str'] == user_id_str]
             has_history = len(user_ratings) > 0
 
         # NẾU LÀ NGƯỜI DÙNG HOÀN TOÀN MỚI
@@ -293,9 +306,6 @@ class MLService:
         # ==============================================================
         # 🛡️ LƯỚI AN TOÀN KÉP (SELF-HEALING) - NẠP LẠI KHI CẦN THIẾT
         # ==============================================================
-        # Tình huống: DB báo User này ĐÃ CÓ lịch sử đánh giá.
-        # Nhưng bộ nhớ RAM (user_enc) lại chưa có tên User này?
-        # => Chắc chắn mô hình trên ổ cứng đã được train lại nhưng RAM chưa kịp cập nhật!
         if user_id not in self.user_enc.classes_:
             logger.warning(f"⚠️ Phát hiện User {user_id} bị thiếu trong AI. Bộ nhớ RAM có thể đã cũ!")
             logger.info("🔄 Kích hoạt chế độ Self-Healing: Tự động nạp lại AI từ ổ cứng...")
@@ -356,8 +366,8 @@ class MLService:
                 "history": watched_ids
             }
 
-        # Encode and predict
-        user_encoded = self.user_enc.transform([user_id])[0]
+        # Encode and predict - Ép kiểu int một lần nữa cho an toàn
+        user_encoded = self.user_enc.transform([int(user_id)])[0]
         user_input = np.array([user_encoded] * len(unwatched))
         movie_input = self.movie_enc.transform(unwatched)
 
